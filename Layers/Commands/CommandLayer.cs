@@ -21,7 +21,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
 
         public async Task RegisterCommands()
         {
-            await RegisterCommand(new RegisterNicknameCommand(Logger, _client));
+            await RegisterCommand(new DailyNicknameCommand(Logger, _client));
         }
         
         private async Task RegisterCommand(Command command)
@@ -36,8 +36,11 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
         
         private async Task HandleSlashCommandExecuted(SocketSlashCommand slashCommand)
         {
-            if (!_commands.TryGetValue(slashCommand.Data.Name, out var command))
+            var commandName = slashCommand.Data.Name;
+            if (!_commands.TryGetValue(commandName, out var command))
             {
+                await LogAsync(LogSeverity.Error, $"Slash command {commandName} is not registered");
+                await slashCommand.RespondAsync($"The command you executed ({commandName}) was not found 😖");
                 return;
             }
 
