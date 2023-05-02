@@ -84,17 +84,13 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
 
         protected async Task LogCommandInfoAsync(SocketSlashCommand slashCommand)
         {
-            var sb = new StringBuilder($"Command \"{Name}\" was executed by user [{slashCommand.User.Username}]");
+            var sb = new StringBuilder($"Command \"{Name}\" was executed by user [{GetUser(slashCommand).Username}]");
             
             if (slashCommand.Data.Options is {Count: > 0})
             {
                 sb.Append(" with the following options: [");
-                foreach (var option in slashCommand.Data.Options)
-                {
-                    sb.Append($"{option.Name}:{option.Value}").Append(", ");
-                }
-
-                sb.Remove(sb.Length - 2, 2).Append(']');
+                
+                AppendOptionsRecursive(sb, slashCommand.Data.Options);
             }
             
             await LogAsync(LogSeverity.Info, sb.ToString());
@@ -103,6 +99,48 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
         protected async Task SendDefaultResponseAsync(SocketSlashCommand slashCommand)
         {
             await slashCommand.RespondAsync($"The command you executed ({Name}) doesn't do anything yet 😦");
+        }
+
+        protected void AddOption(Option option)
+        {
+            Options.Add(option);
+        }
+
+        protected static SocketUser GetUser(SocketSlashCommand slashCommand)
+        {
+            return slashCommand.User;
+        }
+        
+        protected static Dictionary<string, object> GetOptions(IEnumerable<IApplicationCommandInteractionDataOption> options)
+        {
+            return options.ToDictionary(option => option.Name, option => option.Options is {Count: > 0} ? option.Options : option.Value);
+        }
+
+        private static void AppendOptionsRecursive(StringBuilder sb, IEnumerable<IApplicationCommandInteractionDataOption> options)
+        {
+            var hasRecursed = false;
+            foreach (var option in options)
+            {
+                sb.Append(option.Name).Append(": ");
+                if (option.Options == null || option.Options.Count == 0)
+                {
+                    sb.Append(option.Value).Append(", ");
+                }
+                else
+                {
+                    sb.Append('[');
+                    AppendOptionsRecursive(sb, option.Options);
+
+                    hasRecursed = true;
+                }
+            }
+
+            if (!hasRecursed)
+            {
+                sb.Remove(sb.Length - 2, 2);
+            }
+            
+            sb.Append(']');
         }
     }
 }
