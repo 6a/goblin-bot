@@ -7,11 +7,11 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
     {
         protected override string LogPrefix => "Command";
         
-        public string Name { get; init; }
-        public string Description { get; init; }
+        public string Name { get; }
+        public string Description { get; }
         
-        public ulong GuildId { get; init; }
-        public bool IsGlobal { get; init; }
+        public ulong GuildId { get; }
+        public bool IsGlobal { get; }
 
         protected readonly DiscordSocketClient Client;
 
@@ -54,23 +54,23 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
                     var guild = Client.GetGuild(GuildId);
                     if (guild == null)
                     {
-                        await LogAsync(LogSeverity.Warning, $"Failed to register command \"{Name}\": Unable to fetch guild with ID {GuildId}");
+                        await LogAsync(LogSeverity.Warning, $"Failed to register command [{GetNameWithSubCommands()}]: Unable to fetch guild with ID {GuildId}");
                         return false;
                     }
 
                     await guild.CreateApplicationCommandAsync(slashCommand.Build());
                 }
 
-                await LogAsync(LogSeverity.Info, $"Registered {(IsGlobal ? "global" : "guild")} command \"{Name}\"");
+                await LogAsync(LogSeverity.Info, $"Registered {(IsGlobal ? "global" : "guild")} command [{GetNameWithSubCommands()}]");
                 return true;
             }
             catch (HttpException exception)
             {
-                await LogAsync(LogSeverity.Warning, $"Failed to register command \"{Name}\": {exception.Message}");
+                await LogAsync(LogSeverity.Warning, $"Failed to register command [{GetNameWithSubCommands()}]: {exception.Message}");
             }
             catch (ArgumentNullException exception)
             {
-                await LogAsync(LogSeverity.Warning, $"Failed to register command \"{Name}\": {exception.Message}");
+                await LogAsync(LogSeverity.Warning, $"Failed to register command [{GetNameWithSubCommands()}]: {exception.Message}");
             }
             catch (Exception exception)
             {
@@ -84,7 +84,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
 
         protected async Task LogCommandInfoAsync(SocketSlashCommand slashCommand)
         {
-            var sb = new StringBuilder($"Command \"{Name}\" was executed by user [{GetUser(slashCommand).Username}]");
+            var sb = new StringBuilder($"Command [{Name}] was executed by user [{GetUser(slashCommand)}]");
             
             if (slashCommand.Data.Options is {Count: > 0})
             {
@@ -96,9 +96,9 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
             await LogAsync(LogSeverity.Info, sb.ToString());
         }
         
-        protected async Task SendDefaultResponseAsync(SocketSlashCommand slashCommand)
+        protected static async Task SendDefaultResponseAsync(SocketSlashCommand slashCommand)
         {
-            await slashCommand.RespondAsync($"The command you executed ({Name}) doesn't do anything yet 😦");
+            await slashCommand.RespondAsync($"The command you executed ({GetDisplayName(slashCommand)}) doesn't do anything yet 😦");
         }
 
         protected void AddOption(Option option)
@@ -109,6 +109,14 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
         protected static SocketUser GetUser(SocketSlashCommand slashCommand)
         {
             return slashCommand.User;
+        }
+
+        protected static string GetDisplayName(SocketSlashCommand slashCommand)
+        {
+            var subCommand = slashCommand.Data.Options.FirstOrDefault();
+            var subCommandString = subCommand == null ? "" : $" {subCommand.Name}";
+            
+            return $"{slashCommand.CommandName}{subCommandString}";
         }
         
         protected static Dictionary<string, object> GetOptions(IEnumerable<IApplicationCommandInteractionDataOption> options)
@@ -141,6 +149,18 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
             }
             
             sb.Append(']');
+        }
+
+        private string GetNameWithSubCommands()
+        {
+            var sb = new StringBuilder(Name);
+
+            foreach (var option in Options.Where(option => option.Type is ApplicationCommandOptionType.SubCommand or ApplicationCommandOptionType.SubCommandGroup))
+            {
+                sb.Append($" <{option.Name}>");
+            }
+            
+            return sb.ToString();
         }
     }
 }

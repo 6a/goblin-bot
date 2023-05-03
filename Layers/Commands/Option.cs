@@ -9,6 +9,7 @@
         public readonly bool IsRequired;
 
         public readonly List<Option> SubOptions;
+        public readonly List<Choice> Choices;
         
         public Option(string name, ApplicationCommandOptionType type, string description, bool isRequired = false)
         {
@@ -16,12 +17,29 @@
             Type = type;
             Description = description;
             IsRequired = isRequired;
+            
             SubOptions = new List<Option>();
+            Choices = new List<Choice>();
         }
 
-        public void AddSubOption(Option option)
+        public Option AddSubOptions(IEnumerable<Option> options)
         {
-            SubOptions.Add(option);
+            foreach (var option in options)
+            {
+                SubOptions.Add(option);
+            }
+
+            return this;
+        }
+
+        public Option AddChoices(IEnumerable<Choice> choices)
+        {
+            foreach (var choice in choices)
+            {
+                Choices.Add(choice);
+            }
+            
+            return this;
         }
 
         public SlashCommandOptionBuilder ToSlashCommandOptionBuilder()
@@ -33,10 +51,15 @@
                 Description = Description,
                 IsRequired = IsRequired,
             };
-            
-            for (var subOptionIdx = 0; subOptionIdx < SubOptions.Count; subOptionIdx++)
+
+            foreach (var option in SubOptions)
             {
-                command.AddOption(SubOptions[subOptionIdx].ToSlashCommandOptionBuilder());
+                command.AddOption(option.ToSlashCommandOptionBuilder());
+            }
+            
+            foreach (var choice in Choices)
+            {
+                command.AddChoice(choice.Name, choice.Value);
             }
 
             return command;

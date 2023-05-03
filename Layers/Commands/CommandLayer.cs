@@ -21,7 +21,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
 
         public async Task RegisterCommands()
         {
-            await RegisterCommand(new DailyNicknameCommand(Logger, _client));
+            await RegisterCommand(new GymLogCommand(Logger, _client));
         }
         
         private async Task RegisterCommand(Command command)
