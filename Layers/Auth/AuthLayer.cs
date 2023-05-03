@@ -17,29 +17,10 @@ namespace ChimpinOut.GoblinBot.Layers.Auth
 
         public override async Task<bool> InitializeAsync()
         {
-            BotToken = await GetBotToken();
-            return BotToken != string.Empty;
-        }
-        
-        private async Task<string> GetBotToken()
-        {
-            try
-            {
-                var token = Environment.GetEnvironmentVariable(EnvironmentVariableBotToken);
-                if (!string.IsNullOrWhiteSpace(token))
-                {
-                    await LogAsync(LogSeverity.Info, $"Bot token environment variable ({EnvironmentVariableBotToken}) read successfully");
-                    return token;
-                }
-                
-                await LogAsync(LogSeverity.Critical, $"Bot token environment variable ({EnvironmentVariableBotToken}) was null or empty");
-                return string.Empty;
-            }
-            catch (SecurityException securityException)
-            {
-                await LogAsync(LogSeverity.Critical, $"Failed to read bot token environment variable ({EnvironmentVariableBotToken}): {securityException}");
-                return string.Empty; 
-            }
+            await base.InitializeAsync();
+            BotToken = await GetEnvironmentVariable(EnvironmentVariableBotToken);
+
+            return await LogAndReturnInitializationResult(BotToken != string.Empty);
         }
     }
 }

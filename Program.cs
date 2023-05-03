@@ -19,8 +19,13 @@ namespace ChimpinOut.GoblinBot
         
         private static async Task MainAsync()
         {
-            var socketConfig = new DiscordSocketConfig();
-            
+            var socketConfig = new DiscordSocketConfig
+            {
+                // These two intents will trigger a warning if we arent listening to any related events,
+                // so we remove them from the default value and set it here
+                GatewayIntents = GatewayIntents.AllUnprivileged & ~GatewayIntents.GuildScheduledEvents & ~GatewayIntents.GuildInvites
+            };
+
             _client = new DiscordSocketClient(socketConfig);
             _client.Ready += OnClientReady;
 

@@ -17,15 +17,14 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
         public CommandLayer(Logger logger, DiscordSocketClient client, DataLayer dataLayer) : base(logger)
         {
             _client = client;
-            _client.SlashCommandExecuted += HandleSlashCommandExecuted;
-
             _dataLayer = dataLayer;
-            
             _commands = new Dictionary<string, Command>();
         }
 
         public override async Task<bool> InitializeAsync()
         {
+            await base.InitializeAsync();
+            
             if (!await RegisterCommand(new GymLogCommand(Logger, _client)))
             {
                 return false;
@@ -34,7 +33,9 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
             // Other commands go here
             //
             
-            return true;
+            _client.SlashCommandExecuted += HandleSlashCommandExecuted;
+            
+            return await LogAndReturnInitializationResult(true);
         }
         
         private async Task<bool> RegisterCommand(Command command)
