@@ -2,13 +2,24 @@
 {
     public class Logger
     {
-        public Logger(DiscordSocketClient client)
+        public bool IsEnabled { get; set; }
+        public LogSeverity MinimumLogSeverity { get; set; }
+        
+        public Logger(DiscordSocketClient client, LogSeverity minimumLogSeverity = LogSeverity.Info)
         {
             client.Log += LogAsync;
+            
+            IsEnabled = true;
+            MinimumLogSeverity = minimumLogSeverity;
         }
         
         public async Task LogAsync(LogMessage message)
         {
+            if (!IsEnabled || message.Severity > MinimumLogSeverity)
+            {
+                return;
+            }
+            
             if (message.Exception is CommandException cmdException)
             {
                 Console.WriteLine($"{MakeLogPrefix("Command", message.Severity)} {cmdException.Command.Aliases[0]} failed to execute in {cmdException.Context.Channel}.");
@@ -29,7 +40,7 @@
 
         private static string ClampString(string target, int maxSize)
         {
-            return target[..Math.Min(8, target.Length)];
+            return target[..Math.Min(maxSize, target.Length)];
         }
     }
 }

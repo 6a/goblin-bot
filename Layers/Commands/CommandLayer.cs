@@ -1,5 +1,6 @@
 ﻿using ChimpinOut.GoblinBot.Logging;
 using ChimpinOut.GoblinBot.Layers.Commands.Impl;
+using ChimpinOut.GoblinBot.Layers.Data;
 
 namespace ChimpinOut.GoblinBot.Layers.Commands
 {
@@ -11,27 +12,46 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
 
         private readonly Dictionary<string, Command> _commands;
 
-        public CommandLayer(Logger logger, DiscordSocketClient client) : base(logger)
+        private readonly DataLayer _dataLayer;
+
+        public CommandLayer(Logger logger, DiscordSocketClient client, DataLayer dataLayer) : base(logger)
         {
             _client = client;
             _client.SlashCommandExecuted += HandleSlashCommandExecuted;
 
+            _dataLayer = dataLayer;
+            
             _commands = new Dictionary<string, Command>();
         }
 
-        public async Task RegisterCommands()
+        public override async Task<bool> InitializeAsync()
         {
-            await RegisterCommand(new GymLogCommand(Logger, _client));
-        }
-        
-        private async Task RegisterCommand(Command command)
-        {
-            if (!await command.Register())
+            if (!await RegisterCommand(new GymLogCommand(Logger, _client)))
             {
-                return;
+                return false;
             }
             
-            _commands.TryAdd(command.Name, command);
+            // Other commands go here
+            //
+            
+            return true;
+        }
+        
+        private async Task<bool> RegisterCommand(Command command)
+        {
+            if (_commands.ContainsKey(command.Name))
+            {
+                await LogAsync(LogSeverity.Error, $"Slash command {command.Name} is already registered");
+                return false;
+            }
+            
+            if (!await command.Register())
+            {
+                return false;
+            }
+
+            _commands.Add(command.Name, command);
+            return true;
         }
         
         private async Task HandleSlashCommandExecuted(SocketSlashCommand slashCommand)

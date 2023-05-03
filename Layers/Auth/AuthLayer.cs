@@ -6,13 +6,22 @@ namespace ChimpinOut.GoblinBot.Layers.Auth
     {
         private const string EnvironmentVariableBotToken = "DISCORD_BOT_TOKEN_GOBLIN_BOT";
      
+        public string BotToken { get; private set; }
+        
         protected override string LogPrefix => "Auth";
         
         public AuthLayer(Logger logger) : base(logger)
         {
+            BotToken = string.Empty;
         }
 
-        public async Task<string> GetBotToken()
+        public override async Task<bool> InitializeAsync()
+        {
+            BotToken = await GetBotToken();
+            return BotToken != string.Empty;
+        }
+        
+        private async Task<string> GetBotToken()
         {
             try
             {

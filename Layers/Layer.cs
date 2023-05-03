@@ -8,5 +8,7 @@ namespace ChimpinOut.GoblinBot.Layers
         protected Layer(Logger logger) : base(logger)
         {
         }
+
+        public abstract Task<bool> InitializeAsync();
     }
 }
