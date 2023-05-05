@@ -20,7 +20,7 @@ namespace ChimpinOut.GoblinBot.Layers.Auth
             await base.InitializeAsync();
             BotToken = await GetEnvironmentVariable(EnvironmentVariableBotToken);
 
-            return await LogAndReturnInitializationResult(BotToken != string.Empty);
+            return LogAndReturnInitializationResult(BotToken != string.Empty);
         }
     }
 }

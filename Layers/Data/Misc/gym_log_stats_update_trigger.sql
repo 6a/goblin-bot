@@ -8,6 +8,6 @@ CREATE TRIGGER "update_gym_log_stats"
   AFTER INSERT
     ON "gym_log_entries"
       BEGIN
-	    INSERT OR IGNORE INTO gym_log_stats(guild_id, user_id, entries) VALUES(NEW.guild_id, NEW.user_id, 0);
+	    INSERT INTO gym_log_stats(guild_id, user_id, entries) VALUES(NEW.guild_id, NEW.user_id, 0) ON CONFLICT DO NOTHING;
 	    UPDATE gym_log_stats SET entries = entries + 1 WHERE guild_id = NEW.guild_id AND user_id = NEW.user_id;
       END

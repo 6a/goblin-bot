@@ -1,4 +1,5 @@
-﻿using ChimpinOut.GoblinBot.Logging;
+﻿using ChimpinOut.GoblinBot.Common;
+using ChimpinOut.GoblinBot.Logging;
 using ChimpinOut.GoblinBot.Layers.Auth;
 using ChimpinOut.GoblinBot.Layers.Commands;
 using ChimpinOut.GoblinBot.Layers.Data;
@@ -7,7 +8,7 @@ namespace ChimpinOut.GoblinBot
 {
     public static class Program
     {
-        public static Task Main(string[] args) => MainAsync();
+        public static Task Main(string[] _) => MainAsync();
 
         private static DiscordSocketClient? _client;
         private static Logger? _logger;
@@ -19,6 +20,7 @@ namespace ChimpinOut.GoblinBot
         
         private static async Task MainAsync()
         {
+
             var socketConfig = new DiscordSocketConfig
             {
                 // These two intents will trigger a warning if we arent listening to any related events,
@@ -30,6 +32,9 @@ namespace ChimpinOut.GoblinBot
             _client.Ready += OnClientReady;
 
             _logger = new Logger(_client, LogSeverity.Verbose);
+            _logger.Initialize();
+            
+            await _logger.LogAsync(new LogMessage(LogSeverity.Info, "Server", $"{Names.BotName} initializing..."));
 
             _authLayer = new AuthLayer(_logger);
             if (!await _authLayer.InitializeAsync())
@@ -60,6 +65,8 @@ namespace ChimpinOut.GoblinBot
                 return;
             }
             
+            await _logger.LogAsync(new LogMessage(LogSeverity.Info, "Server", $"{Names.BotName} successfully initialized"));
+            
             await Task.Delay(Timeout.Infinite);
         }
 
@@ -73,7 +80,7 @@ namespace ChimpinOut.GoblinBot
         {
             if (_logger != null)
             {
-                var logMessage = new LogMessage(LogSeverity.Critical, "Server", "Failed to initialize the server. Shutting down...");
+                var logMessage = new LogMessage(LogSeverity.Critical, "Server", $"Failed to initialize {Names.BotName}. Shutting down...");
                 await _logger.LogAsync(logMessage);
 
                 _logger.IsEnabled = false;

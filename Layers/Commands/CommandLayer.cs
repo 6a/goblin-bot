@@ -25,7 +25,12 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
         {
             await base.InitializeAsync();
             
-            if (!await RegisterCommand(new GymLogCommand(Logger, _client)))
+            if (!await RegisterCommand(new RegisterUserCommand(Logger, _client, _dataLayer)))
+            {
+                return false;
+            }
+            
+            if (!await RegisterCommand(new GymLogCommand(Logger, _client, _dataLayer)))
             {
                 return false;
             }
@@ -35,14 +40,14 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
             
             _client.SlashCommandExecuted += HandleSlashCommandExecuted;
             
-            return await LogAndReturnInitializationResult(true);
+            return LogAndReturnInitializationResult(true);
         }
         
         private async Task<bool> RegisterCommand(Command command)
         {
             if (_commands.ContainsKey(command.Name))
             {
-                await LogAsync(LogSeverity.Error, $"Slash command {command.Name} is already registered");
+                Log(LogSeverity.Error, $"Slash command {command.Name} is already registered");
                 return false;
             }
             
@@ -60,7 +65,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
             var commandName = slashCommand.Data.Name;
             if (!_commands.TryGetValue(commandName, out var command))
             {
-                await LogAsync(LogSeverity.Error, $"Slash command {commandName} is not registered");
+                Log(LogSeverity.Error, $"Slash command {commandName} is not registered");
                 await slashCommand.RespondAsync($"The command you executed ({commandName}) was not found 😖");
                 return;
             }

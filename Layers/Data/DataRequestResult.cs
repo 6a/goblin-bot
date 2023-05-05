@@ -1,29 +1,15 @@
 ﻿namespace ChimpinOut.GoblinBot.Layers.Data
 {
-    public readonly struct DataRequestResult
+    public readonly struct DataRequestResult<TData>
     {
         public readonly bool Success;
 
-        public readonly object Data;
+        public readonly TData Data;
 
-        public DataRequestResult(bool success, object data)
+        public DataRequestResult(bool success, TData data)
         {
             Success = success;
             Data = data;
-        }
-
-        public bool TryGetData<T>(out T? data)
-        {
-            try
-            {
-                data = (T)Data;
-                return true;
-            }
-            catch (Exception)
-            {
-                data = default;
-                return false;
-            }
         }
     }
 }

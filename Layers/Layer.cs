@@ -11,16 +11,18 @@ namespace ChimpinOut.GoblinBot.Layers
 
         public virtual async Task<bool> InitializeAsync()
         {
-            await LogAsync(LogSeverity.Info, $"{GetFormattedName()} initializing...");
+            Log(LogSeverity.Info, $"{GetFormattedName()} initializing...");
+
+            await Task.CompletedTask;
             return true;
         }
 
-        protected async Task<bool> LogAndReturnInitializationResult(bool success)
+        protected bool LogAndReturnInitializationResult(bool success)
         {
             var severity = success ? LogSeverity.Info : LogSeverity.Error;
             var suffix = success ? "successfully initialized" : "failed to initialize";
   
-            await LogAsync(severity, $"{GetFormattedName()} {suffix}");
+            Log(severity, $"{GetFormattedName()} {suffix}");
             
             return success;
         }
@@ -32,21 +34,23 @@ namespace ChimpinOut.GoblinBot.Layers
                 var token = Environment.GetEnvironmentVariable(environmentVariable);
                 if (!string.IsNullOrWhiteSpace(token))
                 {
-                    await LogAsync(LogSeverity.Info, $"Environment variable [{environmentVariable}] read successfully");
+                    Log(LogSeverity.Info, $"Environment variable [{environmentVariable}] read successfully");
                     return token;
                 }
                 
-                await LogAsync(LogSeverity.Error, $"Failed to read environment variable [{environmentVariable}]: value was null or empty");
+                Log(LogSeverity.Error, $"Failed to read environment variable [{environmentVariable}]: value was null or empty");
+                
+                await Task.CompletedTask;
                 return string.Empty;
             }
             catch (SecurityException securityException)
             {
-                await LogAsync(LogSeverity.Error, $"Failed to read environment variable [{environmentVariable}]: {securityException}");
+                Log(LogSeverity.Error, $"Failed to read environment variable [{environmentVariable}]: {securityException}");
                 return string.Empty; 
             }
         }
 
-        protected string GetFormattedName()
+        private string GetFormattedName()
         {
             var className = GetType().Name;
             var sb = new StringBuilder(className, className.Length + 8);

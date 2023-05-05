@@ -13,9 +13,14 @@ namespace ChimpinOut.GoblinBot.Common
             Logger = logger;
         }
 
-        protected async Task LogAsync(LogSeverity severity, string message)
+        protected void Log(LogSeverity severity, string message)
         {
-            await Logger.LogAsync(new LogMessage(severity, LogPrefix, message));
+            Logger.Log(new LogMessage(severity, LogPrefix, message));
+        }
+        
+        protected void LogException(Exception exception)
+        {
+            Logger.LogRaw(exception.ToString());
         }
     }
 }
