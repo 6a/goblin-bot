@@ -1,4 +1,4 @@
-﻿using System.Data;
+﻿using ChimpinOut.GoblinBot.Common;
 
 namespace ChimpinOut.GoblinBot.Layers.Data.DbData
 {
@@ -23,6 +23,18 @@ namespace ChimpinOut.GoblinBot.Layers.Data.DbData
             IsValid = true;
         }
 
+        public StringBuilder AppendDisplayNameToStringBuilder(StringBuilder sb, bool format = true)
+        {
+            var boldMarkup = format ? "**" : null;
+            var indentMarkup = format ? "> " : null;
+            return sb.Append(indentMarkup).Append(boldMarkup).Append("Level ").Append(EntryNumber).Append(" - ").Append(Nickname).Append(boldMarkup);
+        }
+
+        public DateTime GetDateTime(TimeZoneInfo tzi)
+        {
+            return DateTimeHelper.UnixTimeToDateTime(UnixTimeStamp, tzi);
+        }
+        
         public bool Equals(DbGymLogEntry other)
         {
             return GuildId == other.GuildId && UserId == other.UserId && UnixTimeStamp == other.UnixTimeStamp && Nickname == other.Nickname && IsValid == other.IsValid;

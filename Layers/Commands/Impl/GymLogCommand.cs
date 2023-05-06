@@ -111,7 +111,8 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
             
             var options = GetOptions(slashCommand.Data.Options.First().Options);
 
-            var nickname = GetDefaultValueOrFallback(options, NicknameOptionText, string.Empty);
+            // Also trim off any whitespace, linebreak characters etc.
+            var nickname = GetDefaultValueOrFallback(options, NicknameOptionText, string.Empty).Trim();
             if (nickname == string.Empty)
             {
                 LogNonErrorCommandFailure(slashCommand, $"{NicknameOptionText} option was empty");
@@ -190,25 +191,6 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
                 }
             }
             
-            var getGymLogStatsResult = await _dataLayer.GetGymLogStats(guildId, userId);
-            if (!getGymLogStatsResult.Success)
-            {
-                await SendDefaultDatabaseErrorResponse(slashCommand);
-                return;
-            }
-
-            var dbGymLogStats = getGymLogStatsResult.Data;
-            if (!dbGymLogStats.IsValid)
-            {
-                LogNonErrorCommandFailure(slashCommand, "Unexpected user stats lookup error");
-                await SendDefaultDatabaseErrorResponse(slashCommand);
-                
-                return;
-            }
-
-            var totalEntries = dbGymLogStats.Entries;
-            var rank = dbGymLogStats.Rank;
-
             var sb = new StringBuilder($"<@{userId}> went to the gym ");
             if (!wasSpecial)
             {
@@ -217,31 +199,28 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
 
             sb.Append(whenString).Append(", and on ");
             sb.Append(whenString == "today" ? "this" : "that");
-            sb.AppendLine(" day they were known as:").AppendLine();
-            sb.AppendLine($"#{gymLogEntry.EntryNumber} **{nickname}**");
+            sb.AppendLine(" day they were known as: ").AppendLine();
+            sb = gymLogEntry.AppendDisplayNameToStringBuilder(sb).AppendLine();
             
-            await SendDefaultEmbed(slashCommand, "Gym log updated", AppendStats(sb, totalEntries, rank).ToString());
+            await SendDefaultEmbed(slashCommand, "Gym log updated", (await AppendStats(sb, guildId, userId)).ToString());
         }
         
         private async Task ExecuteView(SocketSlashCommand slashCommand)
         {
             var guildId = GetGuildId(slashCommand);
             
-            var user = GetUser(slashCommand);
-            var userId = user.Id;
-            
-            var getUserResult = await _dataLayer.GetUser(userId);
+            var options = GetOptions(slashCommand.Data.Options.First().Options);
+
+            var targetUser = GetDefaultValueOrFallback(options, UserOptionText, (SocketGuildUser)GetUser(slashCommand));
+
+            var getUserResult = await _dataLayer.GetUser(targetUser.Id);
             if (!await ValidateUser(slashCommand, getUserResult))
             {
                 return;
             }
-
-            var options = GetOptions(slashCommand.Data.Options.First().Options);
-
-            var targetUser = GetDefaultValueOrFallback(options, UserOptionText, (SocketGuildUser)user);
-
+            
             var whenString = GetDefaultValueOrFallback(options, WhenOptionText, "today");
-            if (!TryParseWhenString(whenString, getUserResult.Data.Timezone, out var when, out var wasSpecial))
+            if (!TryParseWhenString(whenString, getUserResult.Data.Timezone, out var when, out _))
             {
                 LogNonErrorCommandFailure(slashCommand, $"unable to parse when string [{whenString}]");
                 await SendCommandNotActionedResponse(slashCommand, $"The \"{WhenOptionText}\" must be {DateFormatExplanation}.");
@@ -266,50 +245,30 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
                 
                 return;
             }
-            
-            var getGymLogStatsResult = await _dataLayer.GetGymLogStats(guildId, userId);
-            if (!getGymLogStatsResult.Success)
-            {
-                await SendDefaultDatabaseErrorResponse(slashCommand);
-                return;
-            }
-
-            var dbGymLogStats = getGymLogStatsResult.Data;
-            if (!dbGymLogStats.IsValid)
-            {
-                LogNonErrorCommandFailure(slashCommand, "Unexpected user stats lookup error");
-                await SendDefaultDatabaseErrorResponse(slashCommand);
-                
-                return;
-            }
 
             var title = $"Gym log entry for {targetUser.Username} on {ToDisplayString(when)}";
             
-            var totalEntries = dbGymLogStats.Entries;
-            var rank = dbGymLogStats.Rank;
-
             var sb = new StringBuilder($"On this day <@{targetUser.Id}> went to the gym, and were known as:");
-            sb.AppendLine().AppendLine().AppendLine($"#{gymLogEntry.EntryNumber} **{gymLogEntry.Nickname}**");
+            sb.AppendLine().AppendLine();
+            sb = gymLogEntry.AppendDisplayNameToStringBuilder(sb).AppendLine();
             
-            await SendDefaultEmbed(slashCommand, title, AppendStats(sb, totalEntries, rank).ToString());
+            await SendDefaultEmbed(slashCommand, title, (await AppendStats(sb, guildId, targetUser.Id)).ToString());
         }
 
         private async Task ExecuteList(SocketSlashCommand slashCommand)
         {
             var guildId = GetGuildId(slashCommand);
             
-            var user = GetUser(slashCommand);
-            var userId = user.Id;
-            
-            var getUserResult = await _dataLayer.GetUser(userId);
+            var options = GetOptions(slashCommand.Data.Options.First().Options);
+
+            var targetUser = GetDefaultValueOrFallback(options, UserOptionText, (SocketGuildUser)GetUser(slashCommand));
+
+            var getUserResult = await _dataLayer.GetUser(targetUser.Id);
             if (!await ValidateUser(slashCommand, getUserResult))
             {
                 return;
             }
-            
-            var options = GetOptions(slashCommand.Data.Options.First().Options);
 
-            var targetUser = GetDefaultValueOrFallback(options, UserOptionText, user);
             var maxEntries = GetDefaultValueOrFallback(options, EntriesOptionText, DefaultListMaxEntries);
 
             LogCommandExecutionWithOptions(slashCommand, (UserOptionText, targetUser.Id), (EntriesOptionText, maxEntries));
@@ -329,55 +288,76 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
                 
                 return;
             }
-            
-            var getGymLogStatsResult = await _dataLayer.GetGymLogStats(guildId, userId);
-            if (!getGymLogStatsResult.Success)
-            {
-                await SendDefaultDatabaseErrorResponse(slashCommand);
-                return;
-            }
 
-            var dbGymLogStats = getGymLogStatsResult.Data;
-            if (!dbGymLogStats.IsValid)
-            {
-                LogNonErrorCommandFailure(slashCommand, "Unexpected user stats lookup error");
-                await SendDefaultDatabaseErrorResponse(slashCommand);
-                
-                return;
-            }
+            var entriesNumberText = gymLogEntries.Count > 1 ? $"{gymLogEntries.Count} " : "";
+            var entriesWordText = gymLogEntries.Count > 1 ? "entries" : "entry";
+            var title = $"Showing {entriesNumberText}latest gym log {entriesWordText} for {targetUser.Username}";
             
-            var totalEntries = dbGymLogStats.Entries;
-            var rank = dbGymLogStats.Rank;
-
-            var title = $"Showing latest gym log entries for {targetUser.Username}";
             var sb = new StringBuilder($"Here are <@{targetUser.Id}>'s most recent gym log entries:");
-            sb.AppendLine().AppendLine("```fix");
-            for (var i = 0; i < gymLogEntries.Count; i++)
+            sb.AppendLine().AppendLine();
+            foreach (var gymLogEntry in gymLogEntries)
             {
-                var entry = gymLogEntries[i];
-                var entryNumber = totalEntries - (ulong)i;
-                
-                var date = DateTimeHelper.UnixTimeToDateTime(entry.UnixTimeStamp, getUserResult.Data.Timezone);
-                sb.AppendLine($"#{entryNumber} [{entry.Nickname}] on {ToDisplayString(date)}");
+                sb = gymLogEntry.AppendDisplayNameToStringBuilder(sb, true);
+                sb.Append($" ({ToDisplayString(gymLogEntry.GetDateTime(getUserResult.Data.Timezone))}) ").AppendLine();
             }
-
-            sb.Append("```");
-
-            await SendDefaultEmbed(slashCommand, title, AppendStats(sb, totalEntries, rank).ToString());
+            
+            await SendDefaultEmbed(slashCommand, title, (await AppendStats(sb, guildId, targetUser.Id)).ToString());
         }
         
         private async Task ExecuteStats(SocketSlashCommand slashCommand)
         {
-            var user = GetUser(slashCommand);
-            var userId = user.Id;
-
+            var guildId = GetGuildId(slashCommand);
+            
             var options = GetOptions(slashCommand.Data.Options.First().Options);
 
-            var targetUser = options.GetValueOrDefault(UserOptionText) as SocketUser;
-            
-            Log(LogSeverity.Verbose, $"Executing [{GetCommandName(slashCommand)}] command from user [{user}] with the following parameters: [user: {targetUser}]");
+            var caller = GetUser(slashCommand);
+            var targetUser = GetDefaultValueOrFallback(options, UserOptionText, caller);
 
-            await slashCommand.RespondAsync($"The command you executed ({GetCommandName(slashCommand)}) is currently under development 🤓");
+            if (targetUser.Id == caller.Id)
+            {
+                LogCommandExecutionWithOptions(slashCommand, (UserOptionText, targetUser.Id));
+                
+                var user = GetUser(slashCommand);
+                var userId = user.Id;
+
+                var getUserResult = await _dataLayer.GetUser(userId);
+                if (!await ValidateUser(slashCommand, getUserResult))
+                {
+                    return;
+                }
+                
+                var title = $"Gym Log stats for {targetUser.Username}";
+                
+                var dbGymLogStats = await TryGetGymLogStats(guildId, userId);
+
+                var sb = new StringBuilder("User is currently ");
+                sb.Append(dbGymLogStats.Rank == 0 ? "unranked" : $"ranked {StringHelpers.ToOrdinal(dbGymLogStats.Rank)}");
+                sb.Append(" on the server.");
+                
+                if (dbGymLogStats.IsValid)
+                {
+                    var getMostRecentEntryResult = await _dataLayer.GetMostRecentEntry(guildId, userId);
+                    if (!getMostRecentEntryResult.Success)
+                    {
+                        await SendDefaultDatabaseErrorResponse(slashCommand);
+                        return;
+                    }
+
+                    var mostRecentEntry = getMostRecentEntryResult.Data;
+                    if (mostRecentEntry.IsValid)
+                    {
+                        sb.AppendLine(" Their most recent entry is: ").AppendLine();
+                        mostRecentEntry.AppendDisplayNameToStringBuilder(sb);
+                        sb.AppendLine($" ({ToDisplayString(mostRecentEntry.GetDateTime(getUserResult.Data.Timezone))}) ");
+                        sb.AppendLine(StringHelpers.ZeroWidthSpace);
+                    }
+                }
+                
+                await SendDefaultEmbed(slashCommand, title, sb.ToString());
+                return;
+            }
+            
+            // LogCommandExecutionWithOptions(slashCommand, (UserOptionText, "all server members"));
         }
         
         private async Task<bool> ValidateUser(SocketSlashCommand slashCommand, DataRequestResult<DbUser> getUserResult)
@@ -406,6 +386,38 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
             }
 
             return true;
+        }
+        
+        private async Task<DbGymLogStats> TryGetGymLogStats(ulong guildId, ulong userId)
+        {
+            var getGymLogStatsResult = await _dataLayer.GymLogGetUserStats(guildId, userId);
+            if (!getGymLogStatsResult.Success)
+            {
+                return default;
+            }
+
+            var dbGymLogStats = getGymLogStatsResult.Data;
+            if (dbGymLogStats.IsValid)
+            {
+                return dbGymLogStats;
+            }
+            
+            Log(LogSeverity.Info, $"No gym log stats found for [{guildId}:{userId}]");
+            return default;
+        }
+        
+        private async Task<StringBuilder> AppendStats(StringBuilder sb, ulong guildId, ulong userId)
+        {
+            var dbGymLogStats = await TryGetGymLogStats(guildId, userId);
+            if (!dbGymLogStats.IsValid)
+            {
+                return sb;
+            }
+            
+            sb.AppendLine().Append($"They are currently level {dbGymLogStats.Entries} and are ranked ");
+            sb.Append(StringHelpers.ToOrdinal(dbGymLogStats.Rank)).Append(" on the server.");
+
+            return sb;
         }
         
         private static bool TryParseWhenString(string whenString, TimeZoneInfo timezone, out DateTime parsedDate, out bool wasSpecial)
@@ -439,16 +451,6 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
         private static string ToDisplayString(DateTime dateTime)
         {
             return dateTime.ToString(DefaultStringFormatDateFormat);
-        }
-
-        private static StringBuilder AppendStats(StringBuilder sb, ulong totalEntries, ulong rank)
-        {
-            sb.AppendLine().Append("They have been to the gym ");
-            sb.Append($"{(totalEntries > 1 ? $"{totalEntries} times" : "once")} and are ranked ");
-            sb.Append(StringHelpers.ToOrdinal(rank));
-            sb.Append(" on the server.");
-
-            return sb;
         }
     }
 }

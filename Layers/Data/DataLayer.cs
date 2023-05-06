@@ -137,7 +137,7 @@ namespace ChimpinOut.GoblinBot.Layers.Data
             }
         }
         
-        public async Task<DataRequestResult<DbGymLogStats>> GetGymLogStats(ulong guildId, ulong userId)
+        public async Task<DataRequestResult<DbGymLogEntry>> GetMostRecentEntry(ulong guildId, ulong userId)
         {
             try
             {
@@ -148,30 +148,27 @@ namespace ChimpinOut.GoblinBot.Layers.Data
                     var command = connection.CreateCommand();
                     command.CommandText = 
                     $@"
-                        SELECT entries, rank FROM
-                        (
-                          SELECT *, RANK () OVER (ORDER BY entries DESC) rank
-                          FROM gym_log_stats
-                        )
+                        SELECT * from gym_log_entries
                         WHERE guild_id = {guildId} AND user_id = {userId}
+                        ORDER BY entry_number DESC LIMIT 1
                     ";
 
                     await using (var reader = await command.ExecuteReaderAsync())
                     {
                         if (!reader.HasRows)
                         {
-                            return new DataRequestResult<DbGymLogStats>(true, default);
+                            return new DataRequestResult<DbGymLogEntry>(true, default);
                         }
 
                         await reader.ReadAsync();
                         
-                        return new DataRequestResult<DbGymLogStats>(true, new DbGymLogStats(reader));
+                        return new DataRequestResult<DbGymLogEntry>(true, new DbGymLogEntry(reader));
                     }
                 }
             }
             catch (SqliteException exception)
             {
-                Log(LogSeverity.Error, $"Database error when attempting to fetch user {userId}");
+                Log(LogSeverity.Error, $"Database error when attempting to fetch entry for user [{guildId}:{userId}]S");
                 LogException(exception);
 
                 return default;
@@ -381,7 +378,49 @@ namespace ChimpinOut.GoblinBot.Layers.Data
             }
         }
         
-        public async Task<DataRequestResult<string>> GymLogGetStats(ulong guildId, ulong[] users)
+                
+        public async Task<DataRequestResult<DbGymLogStats>> GymLogGetUserStats(ulong guildId, ulong userId)
+        {
+            try
+            {
+                await using (var connection = new SqliteConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+
+                    var command = connection.CreateCommand();
+                    command.CommandText = 
+                    $@"
+                        SELECT entries, rank FROM
+                        (
+                          SELECT *, RANK () OVER (ORDER BY entries DESC) rank
+                          FROM gym_log_stats
+                        )
+                        WHERE guild_id = {guildId} AND user_id = {userId}
+                    ";
+
+                    await using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (!reader.HasRows)
+                        {
+                            return new DataRequestResult<DbGymLogStats>(true, default);
+                        }
+
+                        await reader.ReadAsync();
+                        
+                        return new DataRequestResult<DbGymLogStats>(true, new DbGymLogStats(reader));
+                    }
+                }
+            }
+            catch (SqliteException exception)
+            {
+                Log(LogSeverity.Error, "Failed to get user stats");
+                LogException(exception);
+
+                return default;
+            }
+        }
+        
+        public async Task<DataRequestResult<string>> GymLogGetServerStats(ulong guildId)
         {
             await Task.CompletedTask;
             return default;

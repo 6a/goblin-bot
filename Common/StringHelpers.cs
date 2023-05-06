@@ -2,6 +2,11 @@
 {
     public static class StringHelpers
     {
+        /// <summary>
+        /// The string below is a single zero-width space (https://en.wikipedia.org/wiki/Zero-width_space)
+        /// </summary>
+        public const string ZeroWidthSpace = "​";
+        
         public static string ToOrdinal(ulong num)
         {
             if (num <= 0)

@@ -1,4 +1,5 @@
 ﻿global using System.Text;
+global using System.Data;
 global using System.Security;
 global using System.Globalization;
 global using System.Collections.Concurrent;
