@@ -104,7 +104,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
             var userId = user.Id;
 
             var getUserResult = await _dataLayer.GetUser(userId);
-            if (!await ValidateUser(slashCommand, getUserResult))
+            if (!await ValidateUser(slashCommand, getUserResult, GetUserIdentifier(guildId, userId, userId)))
             {
                 return;
             }
@@ -211,10 +211,11 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
             
             var options = GetOptions(slashCommand.Data.Options.First().Options);
 
-            var targetUser = GetDefaultValueOrFallback(options, UserOptionText, (SocketGuildUser)GetUser(slashCommand));
+            var commandUser = GetUser(slashCommand);
+            var targetUser = GetDefaultValueOrFallback(options, UserOptionText, commandUser);
 
             var getUserResult = await _dataLayer.GetUser(targetUser.Id);
-            if (!await ValidateUser(slashCommand, getUserResult))
+            if (!await ValidateUser(slashCommand, getUserResult, GetUserIdentifier(guildId, commandUser.Id, targetUser.Id)))
             {
                 return;
             }
@@ -246,7 +247,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
                 return;
             }
 
-            var title = $"Gym log entry for {targetUser.Username} on {ToDisplayString(when)}";
+            var title = $"Gym log entry for {GetUserDisplayNameOnServer(guildId, targetUser.Id)} on {ToDisplayString(when)}";
             
             var sb = new StringBuilder($"On this day <@{targetUser.Id}> went to the gym, and were known as:");
             sb.AppendLine().AppendLine();
@@ -261,10 +262,11 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
             
             var options = GetOptions(slashCommand.Data.Options.First().Options);
 
-            var targetUser = GetDefaultValueOrFallback(options, UserOptionText, (SocketGuildUser)GetUser(slashCommand));
+            var commandUser = GetUser(slashCommand);
+            var targetUser = GetDefaultValueOrFallback(options, UserOptionText, commandUser);
 
             var getUserResult = await _dataLayer.GetUser(targetUser.Id);
-            if (!await ValidateUser(slashCommand, getUserResult))
+            if (!await ValidateUser(slashCommand, getUserResult, GetUserIdentifier(guildId, commandUser.Id, targetUser.Id)))
             {
                 return;
             }
@@ -291,7 +293,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
 
             var entriesNumberText = gymLogEntries.Count > 1 ? $"{gymLogEntries.Count} " : "";
             var entriesWordText = gymLogEntries.Count > 1 ? "entries" : "entry";
-            var title = $"Showing {entriesNumberText}latest gym log {entriesWordText} for {targetUser.Username}";
+            var title = $"Showing {entriesNumberText}latest gym log {entriesWordText} for {GetUserDisplayNameOnServer(guildId, targetUser.Id)}";
             
             var sb = new StringBuilder($"Here are <@{targetUser.Id}>'s most recent gym log entries:");
             sb.AppendLine().AppendLine();
@@ -320,7 +322,10 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
             }
         }
         
-        private async Task<bool> ValidateUser(SocketSlashCommand slashCommand, DataRequestResult<DbUser> getUserResult)
+        private async Task<bool> ValidateUser(
+            SocketSlashCommand slashCommand,
+            DataRequestResult<DbUser> getUserResult,
+            string userIdentifier)
         {
             if (!getUserResult.Success)
             {
@@ -332,7 +337,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
             if (!dbUser.IsValid)
             {
                 LogNonErrorCommandFailure(slashCommand, "user not registered");
-                await SendCommandNotActionedResponse(slashCommand, $"You need to register with the bot first using the /{RegisterCommandText} command.");
+                await SendCommandNotActionedResponse(slashCommand, $"{userIdentifier} needs to register with the bot first using the /{RegisterCommandText} command.");
 
                 return false;
             }
@@ -386,7 +391,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
             
             LogCommandExecutionWithOptions(slashCommand, (UserOptionText, user.Id));
                 
-            var title = $"Gym Log stats for {user.Username}";
+            var title = $"Gym Log stats for {GetUserDisplayNameOnServer(guildId, user.Id)}";
                 
             var dbGymLogStats = await TryGetGymLogStats(guildId, user.Id);
             if (!dbGymLogStats.IsValid)
@@ -435,7 +440,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
             {
                 var stats = getGymLogServerStatsResult.Data[statsIdx];
                 var user = Client.GetUser(stats.UserId);
-                var username = user != null ? user.Username : "UNKNOWN USER";
+                var username = user != null ? GetUserDisplayNameOnServer(guildId, user.Id) : "UNKNOWN USER";
 
                 sb.Append($"> **{stats.Rank}. ").Append(username).Append($" (Level {stats.Level})").AppendLine("**");
                 sb.Append("> Latest entry: ");
@@ -450,6 +455,21 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
             }
                 
             await SendDefaultEmbed(slashCommand, title, sb.ToString());
+        }
+
+        private string GetUserIdentifier(ulong guildId, ulong commandUserId, ulong targetUserId)
+        {
+            return commandUserId == targetUserId ? "You" : GetUserDisplayNameOnServer(guildId, targetUserId);
+        }
+
+        private string GetUserDisplayNameOnServer(ulong guildId, ulong userId)
+        {
+            if (guildId == 0 || userId == 0)
+            {
+                return "UNKNOWN USER";
+            }
+            
+            return Client.GetGuild(guildId).GetUser(userId).DisplayName;
         }
         
         private static bool TryParseWhenString(string whenString, TimeZoneInfo timezone, out DateTime parsedDate, out bool wasSpecial)

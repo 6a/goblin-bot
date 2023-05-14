@@ -137,44 +137,6 @@ namespace ChimpinOut.GoblinBot.Layers.Data
             }
         }
         
-        public async Task<DataRequestResult<DbGymLogEntry>> GetMostRecentEntry(ulong guildId, ulong userId)
-        {
-            try
-            {
-                await using (var connection = new SqliteConnection(_connectionString))
-                {
-                    await connection.OpenAsync();
-
-                    var command = connection.CreateCommand();
-                    command.CommandText = 
-                    $@"
-                        SELECT * from gym_log_entries
-                        WHERE guild_id = {guildId} AND user_id = {userId}
-                        ORDER BY entry_number DESC LIMIT 1
-                    ";
-
-                    await using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        if (!reader.HasRows)
-                        {
-                            return new DataRequestResult<DbGymLogEntry>(true, default);
-                        }
-
-                        await reader.ReadAsync();
-                        
-                        return new DataRequestResult<DbGymLogEntry>(true, new DbGymLogEntry(reader));
-                    }
-                }
-            }
-            catch (SqliteException exception)
-            {
-                Log(LogSeverity.Error, $"Database error when attempting to fetch entry for user [{guildId}:{userId}]S");
-                LogException(exception);
-
-                return default;
-            }
-        }
-        
         public async Task<DataRequestResult<GymLogAddEntryResult>> GymLogAddEntry(ulong guildId, ulong userId, DateTime dateTime, string nickname, bool shouldOverwrite)
         {
             try
@@ -187,8 +149,13 @@ namespace ChimpinOut.GoblinBot.Layers.Data
                     var command = connection.CreateCommand();
                     command.CommandText = 
                     $@"
-                        SELECT * FROM gym_log_entries 
-                        WHERE guild_id = {guildId} AND user_id = {userId} AND datetime_unix = {ToUnixTime(dateTime)}
+                        SELECT * FROM 
+                        (
+                          SELECT *, RANK () OVER (ORDER BY datetime_unix ASC) level
+                          FROM gym_log_entries
+                          WHERE guild_id = {guildId} AND user_id = {userId}
+                        )
+                        WHERE datetime_unix = {ToUnixTime(dateTime)}
                     ";
 
                     DbGymLogEntry dateCollision = default;
@@ -313,8 +280,13 @@ namespace ChimpinOut.GoblinBot.Layers.Data
                     var command = connection.CreateCommand();
                     command.CommandText =
                     $@"
-                        SELECT * FROM gym_log_entries 
-                        WHERE guild_id = {guildId} AND user_id = {userId} AND datetime_unix = {ToUnixTime(dateTime)}
+                        SELECT * FROM 
+                        (
+                          SELECT *, RANK () OVER (ORDER BY datetime_unix ASC) level
+                          FROM gym_log_entries
+                          WHERE guild_id = {guildId} AND user_id = {userId}
+                        )
+                        WHERE datetime_unix = {ToUnixTime(dateTime)}
                     ";
 
                     await using (var reader = await command.ExecuteReaderAsync())
@@ -457,10 +429,10 @@ namespace ChimpinOut.GoblinBot.Layers.Data
                             timezone,
                             entries AS level,
                             rank FROM
-                        (
-                          SELECT *, RANK () OVER (ORDER BY entries DESC) rank
-                          FROM gym_log_stats
-                        ) ranks
+                            (
+                                SELECT *, RANK () OVER (ORDER BY entries DESC) rank
+                                FROM gym_log_stats
+                            ) ranks
                         INNER JOIN gym_log_entries
                         ON gym_log_entries.nickname =
                         (

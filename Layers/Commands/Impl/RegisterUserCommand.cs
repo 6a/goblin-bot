@@ -55,7 +55,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
                 return;
             }
             
-            var cockLength = GetDefaultValueOrFallback(options, TimeZoneOptionText, double.MinValue);
+            var cockLength = GetDefaultValueOrFallback(options, CockSizeOptionText, double.MinValue);
             if (cockLength > double.MinValue)
             {
                 LogNonErrorCommandFailure(slashCommand, "User tried to register the size of their appendage");
