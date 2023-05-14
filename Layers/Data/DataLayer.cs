@@ -349,8 +349,12 @@ namespace ChimpinOut.GoblinBot.Layers.Data
                     var command = connection.CreateCommand();
                     command.CommandText =
                     $@"
-                        SELECT * FROM gym_log_entries
-                        WHERE guild_id = {guildId} AND user_id = {userId}
+                        SELECT * FROM 
+                        (
+                          SELECT *, RANK () OVER (ORDER BY datetime_unix ASC) level
+                          FROM gym_log_entries
+                          WHERE guild_id = {guildId} AND user_id = {userId}
+                        )
                         ORDER BY datetime_unix DESC LIMIT {maxEntries}
                     ";
 
@@ -378,7 +382,6 @@ namespace ChimpinOut.GoblinBot.Layers.Data
             }
         }
         
-                
         public async Task<DataRequestResult<DbGymLogStats>> GymLogGetUserStats(ulong guildId, ulong userId)
         {
             try
@@ -390,12 +393,28 @@ namespace ChimpinOut.GoblinBot.Layers.Data
                     var command = connection.CreateCommand();
                     command.CommandText = 
                     $@"
-                        SELECT entries, rank FROM
+                        SELECT 
+                            gym_log_entries.user_id,
+                            nickname AS most_recent_nickname, 
+                            datetime_unix AS most_recent_nickname_timestamp, 
+                            timezone, 
+                            entries AS level, 
+                            rank FROM
                         (
-                          SELECT *, RANK () OVER (ORDER BY entries DESC) rank
-                          FROM gym_log_stats
+                            SELECT *, RANK () OVER (ORDER BY entries DESC) rank
+                            FROM gym_log_stats
+                            WHERE guild_id = {guildId} AND user_id = {userId}
+                        ) ranks
+                        INNER JOIN gym_log_entries
+                        ON gym_log_entries.nickname =
+                        (
+                            SELECT nickname FROM gym_log_entries
+                            WHERE guild_id = ranks.guild_id AND user_id = ranks.user_id
+                            ORDER BY datetime_unix DESC LIMIT 1
                         )
-                        WHERE guild_id = {guildId} AND user_id = {userId}
+                        INNER JOIN users
+                        ON users.user_id = ranks.user_id
+                        WHERE ranks.guild_id = gym_log_entries.guild_id AND ranks.user_id = gym_log_entries.user_id
                     ";
 
                     await using (var reader = await command.ExecuteReaderAsync())
@@ -420,10 +439,62 @@ namespace ChimpinOut.GoblinBot.Layers.Data
             }
         }
         
-        public async Task<DataRequestResult<string>> GymLogGetServerStats(ulong guildId)
+        public async Task<DataRequestResult<List<DbGymLogStats>>> GymLogGetServerStats(ulong guildId)
         {
-            await Task.CompletedTask;
-            return default;
+            try
+            {
+                await using (var connection = new SqliteConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+
+                    var command = connection.CreateCommand();
+                    command.CommandText = 
+                    $@"
+                        SELECT
+                            gym_log_entries.user_id,
+                            nickname AS most_recent_nickname,
+                            datetime_unix AS most_recent_nickname_timestamp,
+                            timezone,
+                            entries AS level,
+                            rank FROM
+                        (
+                          SELECT *, RANK () OVER (ORDER BY entries DESC) rank
+                          FROM gym_log_stats
+                        ) ranks
+                        INNER JOIN gym_log_entries
+                        ON gym_log_entries.nickname =
+                        (
+                          SELECT nickname FROM gym_log_entries
+                          WHERE guild_id = {guildId} AND user_id = ranks.user_id
+                          ORDER BY datetime_unix DESC LIMIT 1
+                        )
+                        INNER JOIN users
+                        ON users.user_id = ranks.user_id
+                        LIMIT 20
+                    ";
+
+                    await using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        var results = new List<DbGymLogStats>();
+
+                        while (await reader.ReadAsync())
+                        {
+                            results.Add(new DbGymLogStats(reader));
+                        }
+
+                        await reader.ReadAsync();
+                        
+                        return new DataRequestResult<List<DbGymLogStats>>(true, results);
+                    }
+                }
+            }
+            catch (SqliteException exception)
+            {
+                Log(LogSeverity.Error, "Failed to get server stats");
+                LogException(exception);
+
+                return default;
+            }
         }
 
         private static long ToUnixTime(DateTime dateTime)

@@ -34,5 +34,12 @@
                 }
             }
         }
+        
+        public static StringBuilder AppendNicknameToStringBuilder(StringBuilder sb, ulong level, string nickname, bool format = true)
+        {
+            var boldMarkup = format ? "**" : null;
+            var indentMarkup = format ? "> " : null;
+            return sb.Append(indentMarkup).Append(boldMarkup).Append("Level ").Append(level).Append(" - ").Append(nickname).Append(boldMarkup);
+        }
     }
 }

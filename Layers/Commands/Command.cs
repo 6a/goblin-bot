@@ -191,7 +191,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands
 
             embed.WithFooter(new EmbedFooterBuilder
             {
-                Text = "This bot is powered by the Japanese Goblins and Apes Association ⭐👺🐵⭐",
+                Text = "This bot is sponsored by the Japanese Goblin and Ape Association ⭐👺🐵⭐",
             });
 
             await slashCommand.RespondAsync(embed: embed.Build(), allowedMentions: allowedMentions, ephemeral: isEphemeral);

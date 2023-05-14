@@ -9,6 +9,7 @@ namespace ChimpinOut.GoblinBot.Layers.Data.DbData
         public readonly long UnixTimeStamp;
         public readonly string Nickname;
         public readonly ulong EntryNumber;
+        public readonly ulong Level;
 
         public readonly bool IsValid;
 
@@ -19,15 +20,14 @@ namespace ChimpinOut.GoblinBot.Layers.Data.DbData
             UnixTimeStamp = dataReader.GetInt64(2);
             Nickname = dataReader.GetString(3);
             EntryNumber = (ulong)dataReader.GetInt64(4);
+            Level = (ulong)dataReader.GetInt64(5);
 
             IsValid = true;
         }
 
-        public StringBuilder AppendDisplayNameToStringBuilder(StringBuilder sb, bool format = true)
+        public StringBuilder AppendNicknameToStringBuilder(StringBuilder sb, bool format = true)
         {
-            var boldMarkup = format ? "**" : null;
-            var indentMarkup = format ? "> " : null;
-            return sb.Append(indentMarkup).Append(boldMarkup).Append("Level ").Append(EntryNumber).Append(" - ").Append(Nickname).Append(boldMarkup);
+            return StringHelpers.AppendNicknameToStringBuilder(sb, Level, Nickname, format);
         }
 
         public DateTime GetDateTime(TimeZoneInfo tzi)

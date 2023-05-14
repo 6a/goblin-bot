@@ -12,7 +12,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
         private readonly DataLayer _dataLayer;
         
         public RegisterUserCommand(Logger logger, DiscordSocketClient client, DataLayer dataLayer) 
-            : base(logger, client, "register-goblin", "Register as a user, or update your details if you're already registered")
+            : base(logger, client, "register", "Register as a user, or update your details if you're already registered")
         {
             _dataLayer = dataLayer;
             
