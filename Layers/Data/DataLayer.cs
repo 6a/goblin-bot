@@ -372,11 +372,11 @@ namespace ChimpinOut.GoblinBot.Layers.Data
                             timezone, 
                             entries AS level, 
                             rank FROM
-                        (
-                            SELECT *, RANK () OVER (ORDER BY entries DESC) rank
-                            FROM gym_log_stats
-                            WHERE guild_id = {guildId} AND user_id = {userId}
-                        ) ranks
+                            (
+                                SELECT *, RANK () OVER (ORDER BY entries DESC) rank
+                                FROM gym_log_stats
+                                WHERE guild_id = {guildId}
+                            ) ranks
                         INNER JOIN gym_log_entries
                         ON gym_log_entries.nickname =
                         (
@@ -386,7 +386,7 @@ namespace ChimpinOut.GoblinBot.Layers.Data
                         )
                         INNER JOIN users
                         ON users.user_id = ranks.user_id
-                        WHERE ranks.guild_id = gym_log_entries.guild_id AND ranks.user_id = gym_log_entries.user_id
+                        WHERE ranks.guild_id = {guildId} AND ranks.user_id = {userId}
                     ";
 
                     await using (var reader = await command.ExecuteReaderAsync())
@@ -422,23 +422,24 @@ namespace ChimpinOut.GoblinBot.Layers.Data
                     var command = connection.CreateCommand();
                     command.CommandText = 
                     $@"
-                        SELECT
+                        SELECT 
                             gym_log_entries.user_id,
-                            nickname AS most_recent_nickname,
-                            datetime_unix AS most_recent_nickname_timestamp,
-                            timezone,
-                            entries AS level,
+                            nickname AS most_recent_nickname, 
+                            datetime_unix AS most_recent_nickname_timestamp, 
+                            timezone, 
+                            entries AS level, 
                             rank FROM
                             (
                                 SELECT *, RANK () OVER (ORDER BY entries DESC) rank
                                 FROM gym_log_stats
+                                WHERE guild_id = {guildId}
                             ) ranks
                         INNER JOIN gym_log_entries
                         ON gym_log_entries.nickname =
                         (
-                          SELECT nickname FROM gym_log_entries
-                          WHERE guild_id = {guildId} AND user_id = ranks.user_id
-                          ORDER BY datetime_unix DESC LIMIT 1
+                            SELECT nickname FROM gym_log_entries
+                            WHERE guild_id = ranks.guild_id AND user_id = ranks.user_id
+                            ORDER BY datetime_unix DESC LIMIT 1
                         )
                         INNER JOIN users
                         ON users.user_id = ranks.user_id
