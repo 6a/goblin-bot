@@ -93,7 +93,7 @@ namespace ChimpinOut.GoblinBot.Layers.Commands.Impl
                     break;
             }
             
-            Log(LogSeverity.Info, $"Finished executing command [{GetCommandName(slashCommand)}] for user [[{GetGuildId(slashCommand)}:{GetUserId(slashCommand)}]");
+            Log(LogSeverity.Info, $"Finished executing command [{GetCommandName(slashCommand)}] for user [{GetGuildId(slashCommand)}:{GetUserId(slashCommand)}]");
         }
 
         private async Task ExecuteAdd(SocketSlashCommand slashCommand)
