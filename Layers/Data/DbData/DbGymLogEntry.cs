@@ -20,7 +20,8 @@ namespace ChimpinOut.GoblinBot.Layers.Data.DbData
             UnixTimeStamp = dataReader.GetInt64(2);
             Nickname = dataReader.GetString(3);
             EntryNumber = (ulong)dataReader.GetInt64(4);
-            Level = (ulong)dataReader.GetInt64(5);
+
+            Level = dataReader.FieldCount == 6 ? (ulong) dataReader.GetInt64(5) : 0;
 
             IsValid = true;
         }
